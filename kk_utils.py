@@ -24,14 +24,29 @@ def getDatasets(binary=False):
         return binaryData
     return All
 
-def fitModel(model, X, Y, test_size=0.3,cv=True,ncv=10):
+def fitModel(model, X, Y, test_size=0.3,cv=True,ncv=5, dsetProps=True):
     X_train,X_test, Y_train,Y_test = skm.train_test_split(X, Y, \
                                         test_size=test_size,random_state=123)
+    print('Summary:\n************************************')
+    if dsetProps is True:
+        print('Number of columns:', X_train.shape[1])
+        print('Shapes (Train, Test)')
+        print('%d samples split into %d / %d samples'\
+          %(X.shape[0],X_train.shape[0],X_test.shape[0]))
+    if(len(np.unique(Y)) == 2):
+        print('BINARY TARGETS')
+    else:
+        print('Number of classes:',len(np.unique(Y)))
+    print('Model Name:', model.__class__.__name__)
+    score = 0
     model.fit(X,Y)
     if cv is True:
+        print('CV fold count: ',ncv)
         scores = skm.cross_val_score(model, X,Y,cv=ncv)
-        return (round(np.max(scores)*100,2), np.argmax(scores))    
-    return round(model.score(X_test,Y_test),2)
+        score = round(np.max(scores)*100,2)    
+    score = round(model.score(X_test,Y_test)*100,2)
+    print('Score acheived:', score)
+    return score
 
 def MeanNormalizer1D(X):
     '''

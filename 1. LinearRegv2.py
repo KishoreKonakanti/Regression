@@ -13,7 +13,7 @@ import sklearn.decomposition as skD
 import numpy as np
 import kk_utils as kk
 
-dataset = skd.load_digits()
+dataset = skd.load_breast_cancer()
 
 linreg = skl.LinearRegression()
 rreg = skl.RidgeCV()
@@ -35,13 +35,15 @@ for n_components in range(60,65):
    '''   
 # BEST SCORE CLASSIFICATION
 pca = skD.PCA()
-print('Dataset Name:', dataset.DESCR[0:10])
-X = dataset.data
-Y = dataset.target
-#pca.set_params(n_components=X.shape[1]-2)
-X = pca.fit_transform(X)
-X = kk.MeanNormalizer(X) # This step makes a diff for Ridge and Lasso
-Y = dataset.target
-fsc = kk.fitModel(linreg, X, Y)
-print('Scores:%.2f, %.2f, %.2f'%(kk.fitModel(linreg, X, Y), \
-                    kk.fitModel(rreg, X,Y), kk.fitModel(lasreg, X,Y)))
+for dataset in kk.getDatasets():
+    print('Dataset Name:', dataset.DESCR[0:10])
+    X = dataset.data
+    Y = dataset.target
+    #pca.set_params(n_components=X.shape[1]-2)
+    X = pca.fit_transform(X)
+    X = kk.MeanNormalizer(X) # This step makes a diff for Ridge and Lasso
+    Y = dataset.target
+    fsc = kk.fitModel(linreg, X, Y)
+    print('Scores:%.2f, %.2f, %.2f, %.2f'%(kk.fitModel(linreg, X, Y), \
+                                     kk.fitModel(rreg, X,Y), kk.fitModel(lasreg, X,Y),
+                                     0.00))
