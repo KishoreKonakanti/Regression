@@ -10,10 +10,10 @@ import numpy as np
 def genData(x,y,binary=True, numClasses=2):
     data = np.random.random(size=(x,y))
     if binary is True:
-        target = np.random.randint(0,numClasses+1,size=(x,y))
+        target = np.random.randint(0,numClasses+1,size=(1,y))
     else:
-        target = np.random.random(size=(x,y))
+        target = np.random.random(size=(1,y))
     return (data,target)
 
 print(genData(5,5,numClasses=5))
-print(genData(2,2, False))
+print(genData(2,2, binary=False))
