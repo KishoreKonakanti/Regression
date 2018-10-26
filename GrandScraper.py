@@ -14,9 +14,10 @@ def download(url):
     if url.find('baidu') > 0:
         url = ureq.Request(url, headers={'User-agent':'Mozilla/5.0'})
     try:
-        html = ureq.urlopen(url).read()
+        html = ureq.urlopen(url, timeout=30).read()
         soup = bs4.BeautifulSoup(html,'lxml')
     except Exception:
+        print(url.get_full_url())
         print(url,' site is not allowing bots')
     return html,soup
 

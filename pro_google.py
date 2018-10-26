@@ -17,35 +17,68 @@ import bs4
 import re
 from numpy import NaN
 
+def getAlexaRank(url):
+    base_url = 'https://www.alexa.com/siteinfo/'
+    comp_url = base_url+url
+    html,_ = download(comp_url)
+    html = str(html)
+    rank = None
+    try:
+        rank = re.findall('.*global\":([\d].*?)}.*',html)[0]
+        print('Rank:',rank)
+        return rank
+    except Exception:
+        return None
+
+
+def getCountryReg(website):
+    addr = 'http://whois.domaintools.com/%s'%website
+    _,WS = download(addr)
+    lls = []
+    for div in WS.find_all('div'):
+        if(div.get('id') == 'stats'):
+            for ch in div.findChildren('td'):
+                lls.append(ch.contents)
+    ind = lls.index(['Registrant Country'])
+    return lls[ind+1] or None
+
+def getCountry(website):
+    addr='http://data.alexa.com/data?cli=10&url=%s'%website
+    _,S = download(addr)
+    country = None
+    for i in S.find_all('country'):
+        country = re.findall(r'.*?name=\"(.*?)\".*', str(i))[0]
+    return country
+
+def isUsingJS(soup):
+    t = soup.find_all('script')
+    if len(t) == 0:
+        return False
+    else:
+        return True
+
+def isUsingCSS(html):
+    H = str(html)
+    if(str(H).find('css') > 0):
+        return True
+    else:
+        return False
 
 def saveHTML(url, content):
     if content is None:
         print('THERE IS NOTHING TO WRITE, RECEIVED NONE')
         return -1
-    print(url, content)
-    fname = path
+    global path
+    fname = None
     try:
-        site = re.findall('http[s]{0,1}://[w]{0,3}\.([\w\W\d]{1,}).ai.*', url)[0]
-        fname = path+site+'.html'
-        print(fname)
-        ufile = open(fname, 'a')
+        baseName = getBaseName(url)
+        fname = path+baseName+'.html'
+        ufile = open(fname, 'w')
         ufile.writelines(str(content))
-        scrapeList = open('D:/AI/DataSet/ScrapedSites.txt', 'a')
-        scrapeList.write(site)
-        scrapeList.write('\n')
         ufile.close()
-        scrapeList.close()
     except Exception:
         print('Error occured druing %s saving'%url)
 
-path = 'D:/AI/DataSet/'
-
-def isDuplicate(url):
-    scrapeList = open('D:/AI/DataSet/ScrapedSites.txt', 'r')
-    sites = set(scrapeList.readlines())
-    if url in sites:
-        return True
-    return False
 
 def download(url):
     soup = None
@@ -132,59 +165,16 @@ def clean():
     except Exception:
         pass
     return
-
-def getLinks(pnum):
-    linkList = open('D:/AI/linkList_1.txt', 'a')
-    ll = set()
-    global html
-    for pageNum in range(0,pnum+1):
-        print('******************PAGE %d***********************'%pageNum)
-        #siteNum = pageNum * 10 + 1
-        url='https://www.google.com/search?source=hp&ei=io_RW4vTHIr89QONirTACA&q=site%3A*.ai&oq=site%3A*.ai'
-        html, soup = download(url)
-        for site in linkExtraction(soup):
-            if isDuplicate(site) is False:
-                    ll.add(site)
-                    linkList.write(site)
-                    linkList.write('\n')
-    linkList.close()
     
-def urlparser(url):
-    print(url,' with http:',url.startswith('http'))
-    if(url.find('ai') == -1):
-        return False
-    elif(url.startswith('http') is False):
-        return False
-    else: pass
+def getBaseName(url):
     print('Incoming ',url)
     import re
-    pattern = 'http[s]{0,1}://[w]{0,3}.([\w\W\d]{1,})\.*\.ai'
-    website= re.findall(pattern, url)[0]
+    pattern = '[whtps:/]{0,11}.([\w\W\d]{1,})\.*\.ai'
+    baseName= re.findall(pattern, url)[0]
     print('URL:%s->%s'%(url,website))
-    return website
-
-def linkExtraction(soup):
-    global rc
-    link_set = set()
-    for address in soup.find_all('a'):
-        url = address.get('href')
-        print('URL:',url)
-        if url is not None:
-            try:
-                site = urlparser(url)
-                if site is not False:
-                    if(len(site) != 0):
-                        link_set.add(site)
-            except TypeError:
-                print(url,'is causing TypeError')
-        else: pass
-    return link_set
-
+    return baseName
    
-#content, soup = download('https://www.google.com/search?source=hp&ei=io_RW4vTHIr89QONirTACA&q=site%3A*.ai&oq=site%3A*.ai&gs_l=psy-ab.3...2624.5669.0.6178.12.11.0.0.0.0.226.1451.0j7j1.8.0....0...1.1.64.psy-ab..4.4.758.0..0j35i39k1j0i131k1j0i10k1j0i131i67k1j0i67k1.0.QlQ3Vi0jeF4')
-print(linkExtraction(soup))
-html = ''
-scrapeList = None
+path = 'D:/AI/DataSet/'
 dataFile=open('D:/AI/dataset.csv', 'a')
 dataFile.write('URL:-:Title:-:Description:-:Keywords:-:NumLinks')
 siteDetails = {}
