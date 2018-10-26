@@ -24,7 +24,7 @@ st = time.time()
 X,Y = skd.make_moons(n_samples=10000,random_state=123)
 X_train,X_test, Y_train,Y_test = skm.train_test_split(X, Y, \
                                         test_size=0.3,random_state=123)
-
+    
 sc, linreg = kk.fitModel(linreg,X,Y,roc_stats=False)
 sc, logreg = kk.fitModel(logreg,X,Y,roc_stats=False)
 sc, breg = kk.fitModel(breg,X,Y,roc_stats=False)

@@ -6,6 +6,8 @@ Created on Tue Oct  9 15:33:22 2018
 """
 
 import numpy as np
+import sklearn.datasets as skd
+import kk_utils as kk
 
 def genData(x,y,binary=True, numClasses=2):
     data = np.random.random(size=(x,y))
@@ -15,5 +17,5 @@ def genData(x,y,binary=True, numClasses=2):
         target = np.random.random(size=(1,y))
     return (data,target)
 
-print(genData(5,5,numClasses=5))
-print(genData(2,2, binary=False))
+X = skd.load_boston()
+print(X.shape)
