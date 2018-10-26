@@ -11,7 +11,8 @@ import re
 def download(url):
     soup = None
     html = None
-    #req = Request(url, headers={'User-agent':'Mozilla/5.0'})
+    if url.find('baidu') > 0:
+        url = ureq.Request(url, headers={'User-agent':'Mozilla/5.0'})
     try:
         html = ureq.urlopen(url).read()
         soup = bs4.BeautifulSoup(html,'lxml')
@@ -66,11 +67,12 @@ def getLinks(st_pnum, end_pnum):
     ll = getRecorded()
     newSitesAdded = 0
     pageMisses = 0
+    totalDups = 0
     for pageNum in range(st_pnum,end_pnum+1):
         urls = []
         pageSitesAdded = 0
         dupSites = 0
-        print('******************PAGE %d***********************'%pageNum)
+       # print('******************PAGE %d***********************'%(pageNum+st_pnum))
         siteNum = pageNum * 10 + 1
         urls.append('https://in.search.yahoo.com/search?p=site%3Aai&ei=UTF-8&fr=yfp-t&fp=1&b='+str(siteNum)+'&pz=10&bct=0&xargs=0')
         urls.append('https://www.bing.com/search?q=site%3aai&qs=n&lf=1&sp=-1&pq=site%3aai&sc=1-7&sk=&cvid=E51964C6ABF84C34A3FE347FE1AC9789&first='+str(siteNum)+'&FORM=PORE')
@@ -78,8 +80,8 @@ def getLinks(st_pnum, end_pnum):
         urls.append('https://www.baidu.com/s?wd=site%3Aai&pn='+str(siteNum)+'&oq=site%3Aai&ie=utf-8')
         
         for url in urls:
-            searchEngine = re.findall('http[s]{0,1}://.*\.([\w\W\d]{1,})\.*\.com', url)[0]
-            print('Current SearchEngine:%s\n'%searchEngine.upper())
+           # searchEngine = re.findall('http[s]{0,1}://.*\.([\w\W\d]{1,})\.*\.com', url)[0]
+           # print('Current SearchEngine:%s\n'%searchEngine.upper())
             
             _, soup = download(url)
             linkSet = linkExtraction(soup)
@@ -101,19 +103,22 @@ def getLinks(st_pnum, end_pnum):
                         linkList.write('\n')
                 else:
                     pass
+            totalDups += dupSites
         if pageSitesAdded == 0:
             pageMisses += 1
         elif pageSitesAdded > 0:
             pageMisses = 0
+            '''
         if pageSitesAdded == 0 and pageMisses > 10: 
             # Breaking out of the loop when no more new sites are available
             print('No more new sites found since %d pages... Hence breaking out at Page %d'%(pageMisses,pageNum) )
             break
         else:
             print('%d sites (%d dups) added from page %d'%(pageSitesAdded,dupSites,pageNum))
-    print('Total number of sites added:',newSitesAdded)
+            '''
+    #print('Returning with %d new sites and %d dups:'%(newSitesAdded,totalDups))
     linkList.close()
-    print('Hurray!!! %d sites added (%d skipped) to the list'%(newSitesAdded, dupSites))
+    print('Hurray!!! %d sites added (%d skipped) to the list'%(newSitesAdded, totalDups))
     return ll
 
 import time
@@ -124,7 +129,7 @@ try:
     step = 100
     for st_pnum in range(0,1001,step):
         en_pnum = st_pnum + step   
-        print('Trying fron %d to %d pages'%(st_pnum,en_pnum))
+        print('Trying from %d to %d pages'%(st_pnum,en_pnum))
         getLinks(st_pnum,en_pnum)
         print('Sleeping for 30 minutes')
         time.sleep(1800)

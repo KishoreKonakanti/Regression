@@ -20,12 +20,13 @@ def urlparser(url):
 
 def mge():
     Lset = set()
-    fnames = ['Baidu', 'Bing', 'Yahoo']
+    fnames = ['Baidu', 'Bing', 'Yahoo', 'Google', 'Ask']
+    global final
     for fname in fnames:
         fname = 'D:/AI/%s.txt'%fname
         final = 'D:/AI/%s.txt'%final
         file = open(fname,'r')
-        final = open(final,'a')
+        final = open(r'D:/AI/final.txt','w')
         for link in file.readlines():
             siteName = urlparser(link)
             if siteName is not None and siteName not in Lset:
@@ -33,5 +34,6 @@ def mge():
                 Lset.add(siteName)
         file.close()
     return Lset
-final = 'Final.txt'
+
+final = 'Final'
 print(len(mge()))
