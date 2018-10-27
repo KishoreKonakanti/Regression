@@ -13,12 +13,21 @@ def download(url):
     html = None
     soup = None
     try:
-        html = urllib.request.urlopen(url).read()        
+        html = urllib.request.urlopen(urllib.request.Request(url)).read()        
         soup = bs4.BeautifulSoup(html,'lxml')
-    except Exception: pass
+    except Exception: 
+        print('Error')
     return html,soup
 
-def retrieveGRank(url):
+def postingAds(html):
+    H = str(html)
+    print(H)
+    if(H.find('ca-pub') > -1):
+        return True
+    else:
+        return False
+
+def retrieveGRank(html):
     base_url = 'https://www.alexa.com/siteinfo/'
     comp_url = base_url+url
     html,_ = download(comp_url)
@@ -30,5 +39,7 @@ def retrieveGRank(url):
         return rank
     except Exception:
         return None
-    
-print(retrieveGRank('vernacular.ai'))
+
+#html = urllib.request.urlopen(urllib.request.Request('www.greatandhra.com')).read()        
+html,soup = download('https://www.greatandhra.com')
+print('Posting Ads? ',postingAds(html))
