@@ -12,13 +12,17 @@ import threading
 import time
 
 class ThreadScraper(threading.Thread):
-    def __init__(self, search_engine, ):
+    
+    def __init__(self, search_engine):
+        global logFile
         threading.Thread.__init__(self)
         self.search_engine = search_engine
-        fname = search_engine + '_links_'+'%s.txt'
-        self.linkFile = 'D:/AI/'+fname
+        self.linkFile = 'D:/AI/'
         self.DOMAIN = ''
         self.links_fetched_so_far = 0 
+        self.loaded = False
+        self.linkSet = None
+        self.lock = threading.Lock()
             
     def download(self, url):
         soup = None
@@ -28,9 +32,10 @@ class ThreadScraper(threading.Thread):
         try:
             html = ureq.urlopen(url, timeout=30).read()
             soup = bs4.BeautifulSoup(html,'lxml')
+            ##print(html, soup.contents)
+            soup.encode('utf-8')
         except Exception:
-            print(url.get_full_url())
-            print(url,' site is not allowing bots')
+            print(self.name+'=> '+url,' site is not allowing bots')
         return html,soup
     
     def linkExtraction(self, soup):
@@ -44,7 +49,7 @@ class ThreadScraper(threading.Thread):
                 try:
                     link_set.add(url)
                 except TypeError:
-                    print(url,'is causing TypeError')
+                    print(self.name+'=> '+url,'is causing TypeError')
             else: pass
         return link_set
     
@@ -58,14 +63,33 @@ class ThreadScraper(threading.Thread):
             website = None
         return website
     
+    def prMsg(self, message):
+        print('%s (%s) => %s'%(self.name.upper(), self.DOMAIN, message))
+        
+    def logWrite(self, message):
+        
+        if logFile is None:
+            return None
+            
+        message = '%s (%s) => %s'%(self.name.upper(), self.DOMAIN, message)
+        self.lock.acquire()
+        logFile.write(message)
+        logFile.write('\n')
+        self.lock.release()
+    
     def getRecorded(self):
-        file= open(self.linkFile,'r')
+        
+        file= open(self.linkFile,'r', encoding='utf-8')
         tset = set()
         for address in file.readlines():
             website = self.urlparser(address)
             if website is not None:
                 tset.add(website)
+                
         file.close()
+        
+        self.logWrite('Loaded %d links from %s file'%(len(tset), self.DOMAIN))
+        
         return tset
     
     def filterBaiduLinks(self, addr):
@@ -79,40 +103,48 @@ class ThreadScraper(threading.Thread):
     
     def getLinks(self, st_pnum, end_pnum, step, search_engine):
         
-        print('SEARCH ENGINE REQ:', search_engine)
-        linkList = open(self.linkFile, 'a')
-        
-        ll = self.getRecorded()
-        print('Completed Reading the linkFile, retrieved %d links'%len(ll))
+        #print(self.name+'=> '+'SEARCH ENGINE REQ:', search_engine)
+        linkList = open(self.linkFile, 'a', encoding='utf-8')
+        if self.linkSet is None:
+            self.linkSet = self.getRecorded()
+            #print('Completed Reading the linkFile, retrieved %d links'%len(self.linkSet))
         
         newSitesAdded = 0
         pageMisses = 0
         totalDups = 0
+        base_url = ''
+        base_url_2 = '' # Used only with YAHOO
         if search_engine == 'bing':
-            print('bing')
             base_url = 'https://www.bing.com/search?q=site%3A'+self.DOMAIN+'&first='
-            print(base_url)
             url = base_url+'0'
-            print('URL',url)
         elif(search_engine == 'yahoo'):
-            base_url = 'https://in.search.yahoo.com/search?p=site%3A'+\
-            '%s&ei=UTF-8&fr=yfp-t&fp=1&b=%d&pz=10&bct=0&xargs=0'
-            url = base_url%(self.DOMAIN,0)
+            base_url = 'https://in.search.yahoo.com/search?p=site%3A'+self.DOMAIN+'&ei=UTF-8&fr=yfp-t&fp=1&b='
+            base_url_2 = '&pz=10&bct=0&xargs=0'
+            url = base_url + '0' + base_url_2
         elif(search_engine == 'baidu'):
-            base_url = 'https://www.baidu.com/s?wd=site%3A'+'%s&pn=%d'
-            url = base_url%(self.DOMAIN,0)
+            base_url = 'https://www.baidu.com/s?wd=site%3A'+self.DOMAIN+'%s&pn=%d'
+            url = base_url + '0'
         else:
             url = None
-        print('URL:',url)
-        print(st_pnum, end_pnum, step)
-        for pageNum in range(st_pnum,end_pnum, step):
+        ##print('BASE_URL:', url)
+        for pageNum in range(st_pnum, end_pnum, step):
+            ##print(pageNum,' is the CURRENT page')
             pageSitesAdded = 0
             dupSites = 0
-            print('******************PAGE %d***********************'%(pageNum))
-            siteNum = pageNum * 10 + 1
+            print('******************PAGE %d***********************'%(pageNum+st_pnum))
+            siteNum = pageNum * 10
+            
             url = base_url+ str(siteNum)
+            
+            if self.search_engine is 'yahoo':
+                url += base_url_2
+                
             _, soup = self.download(url)
+       #     ##print('=====================Link Set:',self.name,'',soup)
+            
             linkSet = self.linkExtraction(soup)
+        #    #print('=====================Link Set:',self.name+linkSet)
+            
             if linkSet is None:
                 continue
             for link in linkSet:
@@ -120,70 +152,83 @@ class ThreadScraper(threading.Thread):
                 if link.find('baidu') > -1:
                     website = self.filterBaiduLinks(link)
                 if website is not None:
-                    if website in ll: 
-                        #print(website,'is a dup')
+                    if website in self.linkSet: 
+                        ##print(website,'is a dup')
                         dupSites += 1
                     else:
                         newSitesAdded += 1
                         pageSitesAdded += 1
-                        #print('*********New:', website)
-                        ll.add(website)
+                        self.linkSet.add(website)
                         linkList.write(link)
                         linkList.write('\n')
                 else:
                     pass
             
                 totalDups += dupSites
-                print('%s: %d sites added \n'%(self.search_engine, pageSitesAdded))
+            #self.prMsg('%s: %d sites added \n'%(self.search_engine, pageSitesAdded))
             if pageSitesAdded == 0:
                 pageMisses += 1
             elif pageSitesAdded > 0:
                 pageMisses = 0
-                '''
-            if pageSitesAdded == 0 and pageMisses > 10: 
-                # Breaking out of the loop when no more new sites are available
-                print('No more new sites found since %d pages... Hence breaking out at Page %d'%(pageMisses,pageNum) )
-                break
-            else:
-                print('%d sites (%d dups) added from page %d'%(pageSitesAdded,dupSites,pageNum))
-                '''
-        #print('Returning with %d new sites and %d dups:'%(newSitesAdded,totalDups))
         linkList.close()
-        #print('%d sites added (%d skipped) to the list'%(newSitesAdded, totalDups))
-        return ll
+        
+        return  pageSitesAdded
     
     def run(self):
-        #search_engine = self.search_engine
         st = time.time()
         DOMAIN = ''
-        doms_to_crawl=['in','nl']
+        
+        doms_to_crawl=['io','ml','ai']
+        
         for DOMAIN in doms_to_crawl:
-            
             self.DOMAIN= DOMAIN
+            self.linkFile = 'D:/AI/%s_links_%s.txt'%(self.search_engine, self.DOMAIN)
             self.links_fetched_so_far = 0
-            print('CURRENT DOMAIN : ', DOMAIN)
-            sl_seconds = 2
+            self.linkSet = None
+            sl_seconds = 10
             en_pnum = 0
-            print('DOMAIN:',DOMAIN)
             step = 1
             tot_pages = 0
-            for st_pnum in range(0,20):
+            for st_pnum in range(0,1000,100):
                     if(st_pnum != 0 and st_pnum%100 == 0):
-                        step += 5            
-                    en_pnum = st_pnum + 100   
-                    ladded = self.getLinks(st_pnum, en_pnum, step, self.search_engine)
-                    self.links_fetched_so_far += len(ladded)
-                    print('Links fetched so far:',self.links_fetched_so_far)
-                    print('Sleeping for %d seconds'%sl_seconds)
+                        step += 10       
+                    en_pnum = st_pnum + 100
+                    tot_pages += int((en_pnum - st_pnum +1)/step)    
+                    
+                    psadded  = self.getLinks(st_pnum, en_pnum, step, self.search_engine)
+                    
+                    self.prMsg('%d sites added'%psadded)
+                    self.prMsg('Sleeping for %d seconds'%sl_seconds)
                     time.sleep(sl_seconds)
-            try:pass
-                
-            except Exception: 
-                pass
-            finally:
-                print('Total pages: %d'%tot_pages)
-                print('Time taken:%d seconds'%(time.time() - st))
-                
-#for search_engine in ['bing','baidu','yahoo']:
-current = ThreadScraper('bing')
-current.start()
+
+            self.logWrite('%d new Links added for domain ** %s **'%(len(self.linkSet), DOMAIN.upper()))
+                    
+        #print('Link File:', self.linkFile)
+        #print('Time taken:%d seconds\n'%(time.time() - st))
+
+st = time.time()
+search_threads = []        
+
+logFile = open('D:/AI/log.txt','a')
+logFile.write('****************************************************')
+logFile.write('\n')
+logFile.write('Starting at '+time.asctime())
+logFile.write('\n')
+
+for search_engine in ['bing','baidu','yahoo']:
+    current = ThreadScraper(search_engine)
+    current.setName(search_engine)
+    search_threads.append(current)
+    #print('Thread started for search engine %s\n\n'%(current.name))
+    current.start()
+    time.sleep(1)
+
+# Cleanup code:
+    
+for thread in search_threads:
+    thread.join()
+    
+logFile.close()
+
+print('DONE')
+print('Time taken:%d seconds\n'%(time.time() - st))

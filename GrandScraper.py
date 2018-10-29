@@ -98,7 +98,7 @@ def getLinks(st_pnum, end_pnum):
                     else:
                         newSitesAdded += 1
                         pageSitesAdded += 1
-                        #print('*********New:', website)
+                        print('*********New:', website)
                         ll.add(website)
                         linkList.write(link)
                         linkList.write('\n')
