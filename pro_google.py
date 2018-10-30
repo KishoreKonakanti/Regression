@@ -12,6 +12,7 @@ Created on Wed Oct 24 20:41:55 2018
 @author: kkonakan
 """
 
+
 from urllib import request as ureq
 import bs4
 import re
@@ -19,6 +20,7 @@ from numpy import NaN
 import os
 import csv
 import time
+
 
 def getAlexaRank(url):
     base_url = 'https://www.alexa.com/siteinfo/'
@@ -130,7 +132,7 @@ def populateSiteDetails(url):
         for metaTags in contentSoup.find_all('meta'):
             #print('Populating Tags')
             attrs = metaTags.attrs
-            if ('name' in attrs.keys() and 'content' in attrs.keys()):
+            if ('name' in attrs.keys() and 'content' in attrs.keys()): # Reading meta tags
                 name = attrs['name']
                 dets = attrs['content']
                 if (name == 'title'):
@@ -156,8 +158,8 @@ def getBaseName(url):
     #print('URL:%s->%s'%(url,baseName))
     return baseName
 
-def startPopulating():
-    linkFile = open('D:/AI/links.txt','r')
+def startPopulating(fileName):
+    linkFile = open('D:/AI/%s.txt'%fileName,'r')
     cnt = 1
     global start_time
     for link in linkFile.readlines():
@@ -167,27 +169,27 @@ def startPopulating():
         print('Time elapsed:%d seconds'%(now - start_time))
         cnt += 1
         siteDets = populateSiteDetails(link)
-        #print(siteDets)
+        print(siteDets)
         writer.writerow(siteDets)
-        #print('Current count:',cnt)
+        print('Current count:',cnt)
         
     linkFile.close()
 
-start_time = time.time()
-path = 'D:/AI/DataSet/'
-props = ['url','title','descr','numLinks','kwords','AlexaRank',
-         'hostedIn','CSS','JS','size']
-csvfile=open(path+'data_11.csv', 'w', encoding='utf-8-sig')
-writer = csv.DictWriter(csvfile, props, restval=NaN)
-writer.writeheader()
-startPopulating()
-#soup = populateSiteDetails('http://www.luis.ai')
-csvfile.close()
-# ERRORS
-print('Time taken:%d seconds'%(time.time() - start_time))
 try:
-    pass
-except Exception: 
-    pass
+    start_time = time.time()
+    path = 'D:/AI/DataSet/'
+    for inFile in ['AI','IO','ML']
+        dataFile=path+inFile+'.csv'
+        
+        props = ['url','title','descr','numLinks','kwords','AlexaRank',
+                 'hostedIn','CSS','JS','size']
+        
+        csvfile=open(dataFile, 'w', encoding='utf-8-sig')
+        writer = csv.DictWriter(csvfile, props, restval=NaN)
+        writer.writeheader()
+        startPopulating(inFile)
+        csvfile.close()
+except Exception as e:
+    print('Exception {0} has been raised'.format(e))
 finally:
-    print('Time taken:%d seconds'%(time.time() - st))
+    print('Time taken:%d seconds'%(time.time() - start_time))

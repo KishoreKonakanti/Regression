@@ -67,6 +67,7 @@ class ThreadScraper(threading.Thread):
         try:
             pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]{1,})\.*\.%s'%self.DOMAIN.lower()
             #self.pr(pattern+':::'+url)
+            url = url.lower()
             currentLink= re.findall(pattern, url)[0]
             if (currentLink.find('yahoo') > 0 or currentLink.find('bing') > 0): # Yahoo search query should'nt be recorded
                 currentLink = None
@@ -77,8 +78,11 @@ class ThreadScraper(threading.Thread):
     def pr(self, message):
         print('%s (%s) => %s\n'%(self.name.upper(), self.DOMAIN, message))
         
-    def fileWrite(self, message, file=logFile,pr=False, header=True):
-        
+
+    def fileWrite(self, message, file=None, pr=False, header=True):
+        if file is None: # Default writes goes to logFiles unless specified otherwise
+            global logFile
+            file = logFile
         if logFile is None:
             return None
         if header is True:
@@ -96,7 +100,7 @@ class ThreadScraper(threading.Thread):
     def getRecorded(self):
         
         if len(linkSet_dict[self.DOMAIN]) != 0:
-            self.pr('Links already loaded for '+self.DOMAIN)
+            #self.pr('Links already loaded for '+self.DOMAIN)
             return True
         
         try:
@@ -158,7 +162,7 @@ class ThreadScraper(threading.Thread):
         for pageNum in range(st_pnum, end_pnum, step):
             pageSitesAdded = 0
             dupSites = 0
-            self.pr('******************PAGE %d***************'%(pageNum), file=logFile,pr=True)
+            #self.fileWrite('******************PAGE %d***************'%(pageNum), file=logFile,pr=True)
             siteNum = pageNum * 10
             
             url = base_url+ str(siteNum)
@@ -170,11 +174,11 @@ class ThreadScraper(threading.Thread):
             
             currLinkSet = self.linkExtraction(soup)
             #self.pr(currLinkSet)
-            self.linkSet = linkSet_dict[self.DOMAIN] # Load the already known links
+            
             if currLinkSet is None:
                 print('Nothing in the currLinkSet')
-                
             else:
+                self.linkSet = linkSet_dict[self.DOMAIN] # Load the already known links
                 for link in currLinkSet:
                     currentLink = self.urlparser(link)
                     
@@ -231,12 +235,12 @@ class ThreadScraper(threading.Thread):
                             step = 40
                     en_pnum = st_pnum + 100
                     tot_pages += int((en_pnum - st_pnum +1)/step)    
-                    self.pr('Pages: %d %d %d'%(st_pnum,en_pnum,step))
+                    #self.pr('Pages: %d %d %d'%(st_pnum,en_pnum,step))
                     
                     psadded  = self.getLinks(st_pnum, en_pnum, step, self.search_engine)
                     
                     self.pr('%d sites added'%psadded)
-                    self.pr('Sleeping for %d seconds'%sl_seconds)
+                    #self.pr('Sleeping for %d seconds'%sl_seconds)
                     time.sleep(sl_seconds)
 
             self.fileWrite('%d new Links added for domain ** %s **'%(len(self.linkSet), DOMAIN.upper()))
@@ -254,6 +258,7 @@ linkSet_dict={}
 domain_list=['io','ml','ai']
 search_engines = ['bing','baidu','yahoo']
 
+
 #domain_list=['io']
 #search_engines = ['bing']
 
@@ -270,7 +275,7 @@ for search_engine in search_engines:
     current = ThreadScraper(search_engine)
     current.setName(search_engine)
     search_threads.append(current)
-    #print('Thread started for search engine %s\n\n'%(current.name))
+    print('Thread started for search engine %s\n\n'%(current.name))
     current.start()
     time.sleep(120)
 

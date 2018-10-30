@@ -1,30 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 26 01:05:44 2018
+Created on Tue Oct 30 20:36:32 2018
 
 @author: kkonakan
 """
 
-def urlparser(url):
-    try:
-        pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]{1,})\.*\.ai'
-        website= re.findall(pattern, url)[0]
-        if website.find('yahoo') > 0: # Yahoo search query should nt be recorded
-            website = None
-    except IndexError:
-        website = None
-    return website
-	
-def merge():
-	global Lset
-	for fl in ['Baidu.txt','Yahoo.txt','Bing.txt']:
-        fname = 'D:/AI/%s'%fl
-		file = open(fname, 'r')
-		for link in file.readlines():
-			name = urlparser(link)
-			if name is not None and name not in Lset:
-				Lset.add(name)
-		file.close()
+import re
 
-Lset = set()
-print(len(Lset))
+ai = open('D:/AI/AI.txt','a')
+ml = open('D:/AI/ML.txt','a')
+io = open('D:/AI/IO.txt','a')
+
+def transform(fname):
+    file = open('D:/AI/%s.txt'%fname)
+    pattern = 'http[s]{0,1}://[w.]{0,4}.[\w\W\d]*?\.ai'
+    ext_pattern = 'http[s]{0,1}://[w.]{0,4}.([\w\W\d]*?)\.ai/.*'
+    for line in file.readlines():
+        if(re.match(pattern, line)):
+            print(line)
+        elif(re.match(ext_pattern, line)):
+            base = re.findall(ext_pattern,line)[0]
+            print('https://www.%s.ai'%base)
+        else:pass
+        
+
