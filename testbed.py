@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Wed Oct 31 14:09:37 2018
+
+@author: kkonakan
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Thu Oct 25 15:46:59 2018
 
 @author: kkonakan
@@ -18,26 +25,15 @@ import bs4
 import re
 from numpy import NaN
 import os
-import csv
-import time
-import threading
 
-class FetchDetails(threading.Thread):
+class FetchDetails():
     
-    def __init__(self, fileName, writer, numLinks):
-        super(FetchDetails, self).__init__()
-        self.inFile = open('D:/AI/%s.txt'%fileName,'r') # Input links file
-        self.DOMAIN = fileName
-        self.writer = writer # CSV output writer
-        self.crawledList = set()
-        self.log = 0 # No log
-        self.lock = threading.Lock()
-        self.baseName = None
-        dataFile='%s/%s.csv'%(path, DOMAIN)
-        self.numLinks = numLinks
-        
+    def __init__(self, DOMAIN):
+        self.DOMAIN = DOMAIN
+        self.log = 1 # 0 => No log
         
     def getAlexaRank(self,url):
+        
         if self.log == 1:
             print('getAlexaRank')
         base_url = 'https://www.alexa.com/siteinfo/'
@@ -100,22 +96,24 @@ class FetchDetails(threading.Thread):
         '''
         if self.log == 1:
             print('saveHTML')
+            print(type(content),': Content type')
         if content is None:
             print('THERE IS NOTHING TO WRITE, RECEIVED NONE')
             return -1
         global path
         fname = None
         size = 0
-        try:
-            #baseName = self.getBaseName(url)
-            fname = 'D:/AI/Dataset/%s_%s.html'%(self.baseName, self.DOMAIN)
-            print(fname,' is name of the file')
-            ufile = open(fname, 'w')
-            ufile.writelines(str(content))
-            ufile.close()
-            size= round(os.path.getsize(fname)/1024)
-        except Exception as e:
-            print('Error occured during %s saving: %s'%(url,e))
+        #try:
+        baseName = self.getBaseName(url)
+        print('**********BASE NAME:', baseName)
+        fname = path+baseName+'.html'
+        print(fname,' is name of the file')
+        ufile = open(fname, 'w')
+        ufile.writelines(str(content))
+        ufile.close()
+        size= round(os.path.getsize(fname)/1024)
+        #except Exception as e:
+         #   print('Error occured during %s saving: \n%s'%(fname,e))
         if self.log == 1:
             print('Returning successfully from saveHTML')
         return size
@@ -125,15 +123,29 @@ class FetchDetails(threading.Thread):
             print('download requested for ', url)
         soup = None
         html = None
-        self.lock.acquire()
         req = ureq.Request(url, headers={'User-agent':'Mozilla/5.0'})
         try:
             html = ureq.urlopen(req, timeout=30).read()
             soup = bs4.BeautifulSoup(html,'lxml')
+        
         except Exception as e:
-            print('DOWNLOAD:',url,' site is not allowing bots with stack as ',e)
-        #self.pr('Returning html,soup')
-        self.lock.release()
+            print('DOWNLOAD:',url,' FAILED with stack as ',e)
+            try:
+                import ssl
+                ssl._create_default_https_context = ssl._create_unverified_context
+                html = ureq.urlopen(url)
+                soup = bs4.BeautifulSoup(html,'lxml')
+            except Exception as e:
+                print('SSL method 1 failed as well')
+                try:
+                    import ssl
+                    context = ssl._create_unverified_context
+                    html = ureq.urlopen(url, context)
+                    soup = bs4.BeautifulSoup(html,'lxml')
+                except Exception as e:
+                    print('SSL method 2 failed as well')
+                
+        self.pr('Returning html,soup')
         return html,soup
     
     def fillNans(self,siteDetails):
@@ -147,6 +159,7 @@ class FetchDetails(threading.Thread):
         return 0
     
     def populateSiteDetails(self,url):
+        print('populate')
         if self.log == 1:
             print('populate')
         '''
@@ -187,13 +200,12 @@ class FetchDetails(threading.Thread):
         else: 
             siteDetails['url'] = url
             siteDetails['title']= self.getBaseName(url).upper()
-        self.crawledList.add(url)
         return siteDetails
             
     def getBaseName(self,url):
         #print('Incoming ',url)
         import re
-        pattern = '[whtps:/.]{0,12}([\w\W\d]{1,})\.*\.%s'%self.DOMAIN.lower()
+        pattern = '[whtps:/]{0,11}([\w\W\d]{1,})\.*\.%s'%self.DOMAIN.lower()
         baseName= re.findall(pattern, url)[0]
         #print('URL:%s->%s'%(url,baseName))
         return baseName
@@ -209,86 +221,40 @@ class FetchDetails(threading.Thread):
         base_url = None
     
         if(re.match(exact_pattern, link)):
-            self.baseName = re.findall(extra_pattern,link)[0]
             base_url = link
         elif(re.match(extra_pattern, link)):
-            self.baseName = re.findall(extra_pattern,link)[0]
-            base_url = 'https://www.%s.%s'%(self.baseName,self.DOMAIN.lower())
+            base = re.findall(extra_pattern,link)[0]
+            base_url = 'https://www.%s.%s'%(base,self.DOMAIN.lower())
         else:pass
         if base_url is None:
-            print('INVALID Link:',link,'\n')
+            print('INVALID Link:',link)
         return base_url
     
-    def run(self,skipLines = 0):
-        linkFile = self.inFile
-        cnt = 1
-        global start_time
-        while skipLines > 0:
-            linkFile.readline()
-            skipLines -= 1
-        for link in linkFile.readlines():
+    def run(self,links):
+        for link in links:
+            print('Current Link:',link)
             link = link.strip()
-            #now = time.time()
-            print('Current Site# %d / %d: %s'%(cnt,self.numLinks,link ))
-            #print('Time elapsed:%d seconds'%(now - start_time))
-            cnt += 1
             link = self.transform(link)
-            if (link in self.crawledList) or (link is None):
+            if (link is None):
+                print('Link did not match the pattern')
                 # Link is a duplicate or an invalid link
                 continue
             print('Current link:',link)
             siteDets = self.populateSiteDetails(link)
-            print('Length of sitedetails:',len(siteDets))
-            self.writer.writerow(siteDets)
-            print('Current count:',cnt)
+            print(siteDets)
             
-        linkFile.close()
 
     def getLineCount(fname):
         with open(fname) as foo:
             return len(foo.readlines())
-    
 
 
 # GLOBALS
-def getLineCount(fname):
-        with open(fname) as foo:
-            return len(foo.readlines())
-            
-
+import time
+st =time.time()
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
-thread_set = []
-DOMAIN_list = ['AI','IO']
-
-try:
-    start_time = time.time()
-    path = 'D:/AI/DataSet/'
-    for DOMAIN in DOMAIN_list:
-        
-        dataFile='%s/%s.csv'%(path, DOMAIN)
-        fname = 'D:/AI/%s.txt'%DOMAIN
-        # Based on the linecount, start a new thread for every 100 links
-        #   Easier to start but harder to write to the dataFile.csv
-        
-        csvfile=open(dataFile, 'w', encoding='utf-8-sig')
-        writer = csv.DictWriter(csvfile, props, restval=NaN)
-        writer.writeheader()
-        numLinks = getLineCount(fname)
-        current = FetchDetails(DOMAIN, writer, numLinks)
-        current.name = DOMAIN
-        thread_set.append(current)
-        print('Starting a thread for %s (%d links)'%(DOMAIN, numLinks))
-        current.start()        
-        time.sleep(10)
-        
-    for thread in thread_set:
-         print('Waiting for thread %s to join'%thread.name)
-         thread.join()
-    
-except threading.ThreadError as the:
-    print('Thread error stack:',the)
-except Exception as e:
-    print('==>{0} for {1} thread has been raised'.format(e, thread.name.upper()))
-finally:
-    print('--->Time taken:%d seconds'%(time.time() - start_time))
+link ='https://www.coriolis.io'
+io = FetchDetails('io')
+io.download(link)
+print('--->Time taken:%d seconds'%(time.time() - st))

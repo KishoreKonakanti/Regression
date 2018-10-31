@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Wed Oct 31 16:11:15 2018
+
+@author: kkonakan
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Thu Oct 25 15:46:59 2018
 
 @author: kkonakan
@@ -216,7 +223,7 @@ class FetchDetails(threading.Thread):
             base_url = 'https://www.%s.%s'%(self.baseName,self.DOMAIN.lower())
         else:pass
         if base_url is None:
-            print('INVALID Link:',link,'\n')
+            print('INVALID Link:',link)
         return base_url
     
     def run(self,skipLines = 0):
@@ -259,8 +266,7 @@ def getLineCount(fname):
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
 thread_set = []
-DOMAIN_list = ['AI','IO']
-
+DOMAIN_list = ['AI','IO','ML']
 try:
     start_time = time.time()
     path = 'D:/AI/DataSet/'
@@ -279,7 +285,7 @@ try:
         current.name = DOMAIN
         thread_set.append(current)
         print('Starting a thread for %s (%d links)'%(DOMAIN, numLinks))
-        current.start()        
+        current.run()        
         time.sleep(10)
         
     for thread in thread_set:

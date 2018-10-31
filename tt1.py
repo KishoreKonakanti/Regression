@@ -25,6 +25,21 @@ def transform(fname):
         else:pass
         print(base_url)
     return base_url
-        
 
-print(transform('ml'))
+def trlink(link):
+    pattern = 'http[s]{0,1}://[w.]{0,4}[\w\W\d]*?\.%s$'%fname.lower()
+    ext_pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]*)?\.%s\/.*$'%fname.lower()
+    base_url = ''
+    line = link
+    if(re.match(pattern, line)):
+        print('Exact match')
+        base_url = line
+    elif(re.match(ext_pattern, line)):
+        base = re.findall(ext_pattern,line)[0]
+        base_url = 'https://www.%s.%s'%(base,'ml')
+    else:pass
+    print('Link:',base_url)
+    return base_url
+        
+print(trlink('http://www.microsofttranslator.com/bv.aspx?ref=SERP&br=ro&mkt=en-IN&dl=en&lp=FR_EN&a=http%3a%2f%2fragnarokforeverlove.ml%2f'))
+#print(transform('ml'))
