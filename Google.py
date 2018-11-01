@@ -52,6 +52,8 @@ def linkExtraction(soup):
     return link_set
 
 def urlparser(url):
+    if url is None:
+        return None
     if url.find('google') > 0:
         return None
     try:
@@ -63,8 +65,7 @@ def urlparser(url):
 
 
 def getRecorded():
-    try:
-        
+    try:        
         file= open('D:/AI/'+fname,'r')
         tset = set()
         for address in file.readlines():
@@ -75,61 +76,51 @@ def getRecorded():
     except Exception: pass
     return tset
 
-def getLinks(st_pnum, end_pnum):
-    linkList = open('D:/AI/'+fname, 'a')
+def getLinks():
+    linkList = open('D:/AI/'+fname, 'a',buffering=1)
     ll = getRecorded()
     dupSites = 0
     newSitesAdded = 0
     pageSitesAdded = 0
     
-    for pageNum in range(st_pnum,end_pnum+1):
+    for pageNum in range(0,100,1):
         pageMisses = 0
         pageSitesAdded = 0
         dupSites = 0
         print('******************PAGE %d***********************'%pageNum)
-        url = 'https://www.google.com/search?q=site:*.ai&hl=en-IN&ei=ZrnSW_PeCYiO8APMy66IBA&sqi=2&start='+str(pageNum*10)+'&sa=N&ved=0ahUKEwjzqdyrwqPeAhUIB3wKHcylC0EQ8NMDCIAB&biw=1536&bih=723'
+        url = 'https://www.google.com/search?q=site:*.ai&start='+str(pageNum*10)
         _, soup = download(url)
         linkSet = linkExtraction(soup)
-        
-        for link in linkSet:
-            website = urlparser(link)
-            if website is not None:
-                if website in ll:
-                    print('DUP:%s'%website)
-                    dupSites += 1
+        if linkSet is None:
+            print('No links were fetched;')
+        else:
+            for link in linkSet:
+                website = urlparser(link)
+                if website is not None:
+                    if website in ll:
+                       # print('DUP:%s'%website)
+                        dupSites += 1
+                    else:
+                        newSitesAdded += 1
+                        pageSitesAdded += 1
+                        ll.add(website)
+                        print('New:', website)
+                        linkList.write('https://www.%s.ai'%website)
+                        linkList.write('\n')
                 else:
-                    newSitesAdded += 1
-                    pageSitesAdded += 1
-                    ll.add(website)
-                    print('New:', website)
-                    linkList.write(link)
-                    linkList.write('\n')
-            else:
-                pass
+                    pass
         if pageSitesAdded == 0:
             pageMisses += 1
         else:
             pageMisses = 0
             
-        '''
-        if pageSitesAdded == 0 and pageMisses > 5: # Breaking out of the loop when no more new sites are available
-            print('No more new sites found... Hence breaking out at Page %d'%pageNum )
-            break
-        else:
-            print('%d sites (%d dups) added from page %d'%(pageSitesAdded,dupSites,pageNum))
-            '''
-    print('Jai Google!!! Total number of sites added:',newSitesAdded)
+       
+    print('Jai Google!!! New sites:%d\n Dups:%d'%(newSitesAdded,dupSites))
     linkList.close()
     return ll
 
 import time
 st = time.time()
 fname='google.txt'
-try:
-    for i in range(0,1000, 4):
-        getLinks(i,i+4)
-        time.sleep(3600)
-except Exception: 
-    pass
-finally:
-    print('Time taken:%d seconds'%(time.time() - st))
+getLinks()
+print('Time taken:%d seconds'%(time.time() - st))

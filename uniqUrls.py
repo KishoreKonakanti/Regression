@@ -11,25 +11,35 @@ import pandas as pd
 def uniqUrls(fname):
     props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
-    file = 'D:/AI/Dataset/%s.csv'%fname
-    csvfile = open(file,'w')
-    print('1')
+    inFile = 'D:/AI/Dataset/%s.csv'%fname
+    outFile = 'D:/AI/Dataset/%s_curated.csv'%fname
+    csvfile = open(outFile,'w', buffering=1)
+    #print('1')
     df = None
-    print(file)
-    df = pd.read_csv(file)
-    print('2')
+    #print(inFile)
+    try:
+        df = pd.read_csv(inFile)
+    except Exception as e:
+        print(e)
+    
+    #print('2')
     
     headers = list(df.columns)
-    print('3')
-    print('Headers:',props)
+    #print('3')
+    #print('Headers:',props)
     wr = csv.DictWriter(csvfile, headers)
-    print('4')
+   # print('4')
     uniqUrls = df['url'].unique()
+    uniqDF = pd.DataFrame(None)
+    uniqDF.append(headers)
+    print('Number of urls:',len(uniqUrls))
     for url in uniqUrls:
         row = df.loc[(df['url'] == url)].head(1)
-        wr.writerow(row)
-        wr.writerow('\n')
-    return df
+        #print(row)
+        uniqDF.append(row)
+        #wr.writerow(row)
+        #wr.writerow('\n')
+    return uniqDF
 
-df = uniqUrls('AI')
+print(uniqUrls('AI'))
     

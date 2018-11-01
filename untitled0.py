@@ -1,65 +1,29 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 31 18:03:54 2018
+Created on Thu Nov  1 22:49:45 2018
 
 @author: kkonakan
 """
 
-import pandas as pd
-from wordcloud import WordCloud
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-import matplotlib.pyplot as plt
-from langdetect import detect_langs
-from langdetect import DetectorFactory
-import langid as lid
+__author__ = 'kkonakan.ai@gmail.com'
 
-DetectorFactory.seed = 0
-nonEng = []
-EngWords = []
-def langList(words):
-    dls= []
-    for word in words:
-        try:
-            lang = lid.classify(word)[0]
-            if lang != 'en':
-                nonEng.append(word)
-                continue
-            else:
-                EngWords.append(word)
-            dls.append(lid.classify(word))
-        except Exception as e:
-            print('*****************',word)
-            print(e)
-    return dls    
+import pprint
 
-def genWordCloud(wordSet):
-    kwstr = ''
-    for word in wordSet:
-        kwstr = kwstr + ' '+ word
-        
-    print('Number of key words:',len(wordSet))
-    print('Number of key words:',len(kwstr))
-    
-    wordcloud = WordCloud(width = 800, height = 800,\
-                          background_color ='white',  \
-                          stopwords = sw,  \
-                          min_font_size = 10).generate(kwstr)
-    plt.figure(figsize=(10,10))
-    plt.imshow(wordcloud)
-    plt.show()    
-
-df = pd.read_csv('D:/AI/Dataset/IO.csv')
-kwords = df['kwords']
-kwords = kwords.dropna()
-
-wordSet = set()
-sw = stopwords.words('english')
-print('Reading lines')
-for line in kwords:
-    tokens = word_tokenize(line)
-    [wordSet.add(word) for word in tokens]
+from googleapiclient.discovery import build
 
 
-wordSet = wordSet.difference(sw)
-genWordCloud(wordSet)
+def main():
+  # Build a service object for interacting with the API. Visit
+  # the Google APIs Console <http://code.google.com/apis/console>
+  # to get an API key for your own application.
+  service = build("customsearch", "v1",
+            developerKey="AIzaSyDVHPb3k4wf4xpckIv6OjVQ_zoeH0H0YiI")
+
+  res = service.cse().list(
+      q='deeplearning',
+      cx='017576662512468239146:omuauf_lfve',
+    ).execute()
+  pprint.pprint(res)
+
+if __name__ == '__main__':
+  main()

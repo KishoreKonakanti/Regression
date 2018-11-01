@@ -280,7 +280,6 @@ DOMAIN_list = ['IO']
 populateCount = {}
 completedThreadCount = 0
 crawledBase = set()
-
 '''
 if os.path.isfile('D:/AI/Dataset/IO.csv'):
     df = pd.read_csv('D:/AI/Dataset/IO.csv', encoding='ISO-8859-1')
@@ -289,7 +288,6 @@ if os.path.isfile('D:/AI/Dataset/IO.csv'):
 print('LENGTH OF CRAWLED BASE:',len(crawledBase))
 del df
 '''
-
 try:
     start_time = time.time()
     path = 'D:/AI/DataSet/'

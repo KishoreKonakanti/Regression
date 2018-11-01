@@ -12,7 +12,7 @@ def write(d):
     keys = ['a','b','c']
     with open('D:/demo.csv','a') as csvfile:
         writer = csv.DictWriter(csvfile, keys)
-#        writer.writeheader()
+        writer.writeheader()
         writer.writerow(d)
        
 d = {'a':10,'b':20,'c':30}

@@ -32,17 +32,19 @@ class ThreadScraper(threading.Thread):
     def download(self, url):
         soup = None
         html = None
-        if url.find('baidu') > 0: 
-            # Only baidu links will masqueraded, with headers, as geniune ones
-            url = ureq.Request(url, headers={'User-agent':'Firefox/2.0.0.11'})
+        if url.find('google') > 0: 
+            req = ureq.Request(url, headers={'User-agent':'Firefox/2.0.0.11'})
         try:
-            html = ureq.urlopen(url, timeout=30).read()
+            if req is None:
+                html = ureq.urlopen(url, timeout=30).read()
+            else:
+                html = ureq.urlopen(req, timeout=30).read()
             soup = bs4.BeautifulSoup(html,'lxml')
             soup.encode('utf-8')
         except Exception as e:
+            print(self.name+'=> '+ url)
             message='Exception %s has occurred'%e
-            self.fileWrite(message,pr=True)
-            print(self.name+'=> '+ url.get_full_url() ,' site is not allowing bots')
+            self.fileWrite(message,file=logFile,pr=True)
             html = None
             soup = None
             
@@ -89,6 +91,7 @@ class ThreadScraper(threading.Thread):
             message = '%s (%s) => %s'%(self.name.upper(), self.DOMAIN, message)
         else:
             message = message
+            
         self.lock.acquire()
         file.write(message)
         file.write('\n')
@@ -116,7 +119,8 @@ class ThreadScraper(threading.Thread):
             linkSet_dict[self.DOMAIN] = tset
             self.lock.release()
             
-            self.fileWrite('Loaded %d links from %s file'%(len(tset), self.DOMAIN))
+            self.fileWrite('Loaded %d links from %s file'%(len(tset),self.DOMAIN), \
+                           file=logFile)
         except FileNotFoundError as fe:
             print('File %s not found'%self.linkFileName)
             print('Full trace: %s'%fe)
@@ -146,6 +150,7 @@ class ThreadScraper(threading.Thread):
         totalDups = 0
         base_url = ''
         base_url_2 = '' # Used only with YAHOO
+        
         if search_engine == 'bing':
             base_url = 'https://www.bing.com/search?q=site%3A'+self.DOMAIN+'&first='
             url = base_url+'0'
@@ -157,8 +162,13 @@ class ThreadScraper(threading.Thread):
         elif(search_engine == 'baidu'):
             base_url = 'https://www.baidu.com/s?wd=site%3A'+self.DOMAIN+'&pn='
             url = base_url + '0'
+        elif(search_engine == 'google'):
+            base_url = 'https://www.google.com/search?q=site:*.'+self.DOMAIN+'&start='
+            url = base_url + '0'
         else:
             url = None
+            
+            
         for pageNum in range(st_pnum, end_pnum, step):
             pageSitesAdded = 0
             dupSites = 0
@@ -172,6 +182,9 @@ class ThreadScraper(threading.Thread):
                 
             _, soup = self.download(url)
             
+            if(self.search_engine.find('google') > 0):
+                time.sleep(2)
+                
             currLinkSet = self.linkExtraction(soup)
             #self.pr(currLinkSet)
             
@@ -192,14 +205,14 @@ class ThreadScraper(threading.Thread):
                             newSitesAdded += 1
                             pageSitesAdded += 1
                             self.linkSet.add(currentLink)
-                            self.fileWrite(link,file=self.linkFile,header=False)                        
+                            self.fileWrite(message=link, file=self.linkFile, header=False)                        
                     else: 
                     # Current currentLink link is None due to pattern match failure in urlparser
                         pass
                 
                     totalDups += dupSites
-            self.fileWrite('%d sites added from page %d to %d \n'%(pageSitesAdded, st_pnum, end_pnum), \
-                           file=self.linkFile)
+            self.fileWrite('%d sites added from page %d to %d '%(pageSitesAdded, st_pnum, end_pnum), \
+                           file=logFile)
             '''
             if pageSitesAdded == 0:
                 pageMisses += 1
@@ -207,11 +220,11 @@ class ThreadScraper(threading.Thread):
                 pageMisses = 0
                 '''
         
-        return  pageSitesAdded
+        return  pageSitesAdded,dupSites
     
     def run(self):
         global domain_list
-        st = time.time()
+        start_th = time.time()
         DOMAIN = ''
                 
         for DOMAIN in domain_list:
@@ -234,35 +247,32 @@ class ThreadScraper(threading.Thread):
                         if step > 50: # Atleast 2 pages must be loaded from each set
                             step = 40
                     en_pnum = st_pnum + 100
-                    tot_pages += int((en_pnum - st_pnum +1)/step)    
-                    #self.pr('Pages: %d %d %d'%(st_pnum,en_pnum,step))
+                    tot_pages += int((en_pnum - st_pnum +1)/step)   
                     
-                    psadded  = self.getLinks(st_pnum, en_pnum, step, self.search_engine)
+                    self.pr('Pages: %d %d %d'%(st_pnum,en_pnum,step))
                     
-                    self.pr('%d sites added'%psadded)
-                    #self.pr('Sleeping for %d seconds'%sl_seconds)
+                    psadded,dupCnt  = self.getLinks(st_pnum, en_pnum, step, self.search_engine)
+                    
+                    siteCount[search_engine+'new'] += psadded
+                    siteCount[search_engine+'dup'] += dupCnt
+                    
                     time.sleep(sl_seconds)
 
-            self.fileWrite('%d new Links added for domain ** %s **'%(len(self.linkSet), DOMAIN.upper()))
+            self.fileWrite('%d new Links added for domain ** %s **'%(len(self.linkSet), self.DOMAIN), file=logFile)
                     
         #print('Link File:', self.linkFile)
-        print('Time taken:%d seconds\n'%(time.time() - st))
-        
-    def cleanup(self):
-        self.linkFile.close()
+        print('Time taken for thread %s:%d seconds\n'%(self.name,(time.time() - start_th)))
         
 
-st = time.time()
+start_time = time.time()
 search_threads = []        
 linkSet_dict={}
+siteCount= {}
 domain_list=['io','ml','ai']
-search_engines = ['bing','baidu','yahoo']
+search_engines = ['bing','yahoo','google']
+search_engines=['google']
 
-
-#domain_list=['io']
-#search_engines = ['bing']
-
-logFile = open('D:/AI/log.txt','a')
+logFile = open('D:/AI/log.txt','a', buffering=1)
 logFile.write('****************************************************')
 logFile.write('\n')
 logFile.write('Starting at '+time.asctime())
@@ -272,6 +282,8 @@ for domain in domain_list:
     linkSet_dict[domain.upper()] = set([])
 
 for search_engine in search_engines:
+    siteCount[search_engine+'new'] = 0
+    siteCount[search_engine+'dup'] = 0
     current = ThreadScraper(search_engine)
     current.setName(search_engine)
     search_threads.append(current)
@@ -285,8 +297,6 @@ for thread in search_threads:
     print(('Waiting for %s to join'%thread.name).upper())
     thread.join()
 
-for thread in search_threads:
-    thread.cleanup()
-
 print('DONE')
-print('Time taken:%d seconds\n'%(time.time() - st))
+print('Site stats',siteCount)
+print('Time taken:%d seconds\n'%(time.time() - start_time))
