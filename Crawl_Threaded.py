@@ -258,6 +258,7 @@ def getLineCount(fname):
 
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
+
 thread_set = []
 DOMAIN_list = ['AI','IO']
 

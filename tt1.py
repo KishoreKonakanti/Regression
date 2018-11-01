@@ -7,11 +7,28 @@ Created on Tue Oct 30 20:36:32 2018
 
 import re
 
-ai = open('D:/AI/AI.txt','a')
+ai = open('D:/AI/AI.txt','r')
 ml = open('D:/AI/ML.txt','a')
 io = open('D:/AI/IO.txt','a')
+'''
+allLinks = []
+for link in ai.readlines():
+    allLinks.append(link.strip())
+    
+lc = 10
+for skip in range(0,800,100):
+    print('Skipping %d'%skip)
+    print(allLinks[skip:skip+lc])
+'''
+def flatten(line):
+    retL = ''
+    for l in line:
+        retL += l
+    print(retL)
+    return retL
 
 def transform(fname):
+    return None
     file = open('D:/AI/%s.txt'%fname)
     pattern = 'http[s]{0,1}://[w.]{0,4}[\w\W\d]*?\.%s$'%fname.lower()
     ext_pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]*)?\.%s\/.*$'%fname.lower()
@@ -27,6 +44,7 @@ def transform(fname):
     return base_url
 
 def trlink(link):
+    return None
     pattern = 'http[s]{0,1}://[w.]{0,4}[\w\W\d]*?\.%s$'%fname.lower()
     ext_pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]*)?\.%s\/.*$'%fname.lower()
     base_url = ''

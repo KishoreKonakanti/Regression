@@ -14,10 +14,12 @@ import os
 import csv
 import time
 import threading
+import pandas as pd
+
 
 class FetchDetails(threading.Thread):
     
-    def __init__(self, fileName, writer, linkCount,skipLinks):
+    def __init__(self, fileName, writer, linkCount, linkBase, csvOutputFile):
         super(FetchDetails, self).__init__()
         self.inFile = 'D:/AI/%s.txt'%fileName  # Input links file
         self.DOMAIN = fileName
@@ -26,9 +28,10 @@ class FetchDetails(threading.Thread):
         self.log = 0 # No log
         self.lock = threading.Lock()
         self.baseName = None
-        #dataFile='%s/%s.csv'%(path, DOMAIN)
+        self.linkBase = linkBase
         self.linkCount = linkCount
         self.skipLinks = skipLinks
+        self.csvOutputFile = csvOutputFile
         
     def getAlexaRank(self,url):
         if self.log == 1:
@@ -88,6 +91,7 @@ class FetchDetails(threading.Thread):
             return 0
     
     def saveHTML(self,url, content):
+        return True # Bypassing saveHTML
         '''
             Saves the file to the disk and returns size of the html file in KB
         '''
@@ -102,6 +106,7 @@ class FetchDetails(threading.Thread):
         size = 0
         
         try:
+            self.lock.acquire()
             #baseName = self.getBaseName(url)
             fname = 'D:/AI/Dataset/%s/%s_%s.html'%(self.DOMAIN.upper(),\
                                                    self.baseName, self.DOMAIN)
@@ -109,6 +114,7 @@ class FetchDetails(threading.Thread):
             ufile = open(fname, 'w')
             ufile.writelines(str(content))
             ufile.close()
+            self.lock.release()
             size= round(os.path.getsize(fname)/1024)
         except Exception as e:
             print('Error occured during %s saving: %s'%(url,e))
@@ -142,6 +148,12 @@ class FetchDetails(threading.Thread):
             else: pass
         return 0
     
+    def flatten(self, multiLine):
+         retL = ''
+         for l in multiLine:
+            retL = '%s %s'%(retL, l)
+         return retL
+    
     def populateSiteDetails(self,url):
         if self.log == 1:
             print('populate')
@@ -156,9 +168,9 @@ class FetchDetails(threading.Thread):
         html,contentSoup = self.download(url)
         if contentSoup is not None and contentSoup.title is not None:
             #print('Content Soup is not NONE:', contentSoup.title)
-            siteDetails['url'] = url
+            siteDetails['url'] = url.strip()
             siteDetails['numLinks'] = len(contentSoup.find_all('a'))
-            siteDetails['title'] = contentSoup.title.string
+            siteDetails['title'] = self.flatten(contentSoup.title.string)
             siteDetails['hostedIn'] = self.getHostCountry(url)
             #siteDetails['RegIn'] = getCountryReg(url)
             siteDetails['AlexaRank'] = self.getAlexaRank(url)
@@ -172,11 +184,11 @@ class FetchDetails(threading.Thread):
                     name = attrs['name']
                     dets = attrs['content']
                     if (name == 'title'):
-                        siteDetails['title'] = dets
+                        siteDetails['title'] = self.flatten(dets)
                     elif (name == 'description' ):
-                        siteDetails['descr'] = dets
+                        siteDetails['descr'] = self.flatten(dets)
                     elif(name == 'keywords'):
-                        siteDetails['kwords'] = dets
+                        siteDetails['kwords'] = self.flatten(dets)
                     else:
                         pass
                 else: pass
@@ -210,57 +222,43 @@ class FetchDetails(threading.Thread):
             self.baseName = re.findall(extra_pattern,link)[0]
             base_url = 'https://www.%s.%s'%(self.baseName,self.DOMAIN.lower())
         else:pass
-        if base_url is None:
-            self.pr('INVALID Link:',link)
-        else:
-            self.pr('Returning %s'%base_url)
-        return base_url
     
-    def getLinkBase(self):
-        self.lock.acquire()
-        linkFile = open(self.inFile, 'r')
-        while self.skipLinks > 0:
-            linkFile.readline()
-            self.skipLinks -= 1
-        
-        linkBase = set()
-        t = self.linkCount
-        while t > 0:
-            link = linkFile.readline()
-            link = self.transform(link.strip())
-            if link is None or link in linkBase:
-                continue
-            else:
-                linkBase.add(link)
-            t -= 1
-            
-        self.lock.release()
-        self.pr('Returning %d links'%len(linkBase))
-        return linkBase
+        if base_url is None:
+            self.pr('INVALID Link:%s'%link)
+    #    else:
+     #       self.pr('Returning %s'%base_url)
+        return base_url
     
     def pr(self,message):
         print('%s => %s'%(self.name, message))
         return None
         
+    
     def run(self):
         cnt = 0
         global start_time
-        # Cache the link base
-        linkBase = self.getLinkBase()
-        #print('HERE')
-        for link in linkBase:            
+        
+        self.linkCount = len(linkBase)
+       
+        for link in self.linkBase:
             #print('HERE')
+            
             self.pr('Current Site# %d / %d: %s'%(cnt,self.linkCount,link ))
             cnt += 1
-            print('Current link:',link)
-            siteDets = self.populateSiteDetails(link)
-            print('Length of sitedetails:',len(siteDets))
-            self.lock.acquire()
-            self.writer.writerow(siteDets)
-            self.lock.release()
-            print('Current count:',cnt)
             
-
+            
+            siteDets = self.populateSiteDetails(link)
+            self.pr('Length of sitedetails: %d'%len(siteDets))
+            
+            self.lock.acquire()
+            # WRITE SITEDETAILS AND INCREMENT THE NUMBER OF POPULATED SITES BY 1
+            self.writer.writerow(siteDets)
+            
+            populateCount[self.name] += 1
+            self.lock.release()
+            
+            
+        self.pr('**********************Time for this thread to complete: %d seconds'%(time.time()-start_time))
     def getLineCount(fname):
         with open(fname) as foo:
             return len(foo.readlines())
@@ -276,64 +274,103 @@ def getLineCount(fname):
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
 thread_set = []
-DOMAIN_list = ['AI','IO']
+DOMAIN_list = ['IO']
+populateCount = {}
+
+crawledBase = set()
+'''
+if os.path.isfile('D:/AI/Dataset/IO.csv'):
+    df = pd.read_csv('D:/AI/Dataset/IO.csv', encoding='ISO-8859-1')
+    urls = df['url'].unique()
+    crawledBase = set(urls)
+print('LENGTH OF CRAWLED BASE:',len(crawledBase))
+del df
+'''
 try:
     start_time = time.time()
     path = 'D:/AI/DataSet/'
     
+    
     for DOMAIN in DOMAIN_list:
-        dataFile='%s/%s.csv'%(path, DOMAIN)
+        csvOutputFile='%s/%s.csv'%(path, DOMAIN)
         fname = 'D:/AI/%s.txt'%DOMAIN
         # Based on the linecount, start a new thread for every 100 links
-        #   Easier to start but harder to write to the dataFile.csv
+        #   Easier to start but harder to write to the csvOutputFile.csv        
+        allLinks = []
         
-        csvfile=open(dataFile, 'w', encoding='utf-8-sig')
+        with open(fname) as inFile:
+            for link in inFile.readlines():
+                allLinks.append(link.strip())
+        
+        
+        csvfile=open(csvOutputFile, 'w', encoding='utf-8-sig')
         writer = csv.DictWriter(csvfile, props, restval=NaN)
-        writer.writeheader()
-        linkCount = getLineCount(fname)
+        
+        numLinksPerThread = 50
+        sl_seconds = 60
+        availableLinkCount = getLineCount(fname)
+        
+        if availableLinkCount%numLinksPerThread == 0:
+            threadCount = availableLinkCount//numLinksPerThread
+        else:
+            threadCount = (availableLinkCount//numLinksPerThread) + 1
+        
+        print('NUMBER OF THREADS WILL BE %d'%threadCount)
+        time.sleep(10)
         # Use skipLinks in run method to spawn a thread for each 100 links. 
         # For each domain, number of threads will be ( linkCount%100 ) +1
+        
         skipLinks = 0
         threadNum = 0
-        if linkCount%100 == 0:
-            threadCount = linkCount//100
-        else:
-            threadCount = (linkCount//100) + 1
         st = time.time()
+        
+        writer.writeheader()
+        
         while threadNum < threadCount:
-            skipLinks = 100*threadNum    
-            print('Time: %d'%(time.time() - st))
-            print('Thread %d: Skipping first %d links'%(threadNum,skipLinks))
+            
+            threadName = '%s: %d'%(DOMAIN, threadNum)
+            skipLinks = numLinksPerThread*threadNum    
+            linkBase = allLinks[skipLinks:skipLinks+numLinksPerThread]
+            #print('Time: %d'%(time.time() - st))
+            print('\nThread %d: Skipping first %d links'%(threadNum,skipLinks))
             threadNum += 1
-            current = FetchDetails(DOMAIN, writer, 100, skipLinks)
-            current.name = '%s: %d'%(DOMAIN, threadNum)
+            current = FetchDetails(DOMAIN, writer, 100, linkBase, csvOutputFile)
+            current.setName(threadName)
+            populateCount[threadName] = 0
             thread_set.append(current)
-            print('Starting a thread for %s'%(DOMAIN))
+            print('\nStarting a thread for %s'%(DOMAIN))
             current.start()        
             skipLinks += 100
-            time.sleep(10)  
-            
+            time.sleep(sl_seconds)  
         
         # Last thread if numLinks > 1
-        if linkCount%100 != 0:
+        if availableLinkCount%100 != 0:
             threadNum -= 1
         if threadCount > threadNum:
-            remLinks = linkCount - (threadNum*100)
-            print('Thread %d: Remaining %d links'%(threadNum+1,remLinks))
-            current = FetchDetails(DOMAIN,writer, remLinks, skipLinks=skipLinks)
-            current.name = '%s - REM'%DOMAIN
+            linkBase = allLinks[skipLinks:]
+            print('Thread %d: Remaining %d links'%len(linkBase))
+            current = FetchDetails(DOMAIN, writer, len(linkBase), linkBase)
+            current.name = '%s-LAST'%DOMAIN
             thread_set.append(current)
             current.start()
-        
+    
     for thread in thread_set:
          print('Waiting for thread %s to join'%thread.name)
-         thread.join()
-    
+         thread.join(timeout=7200)
+         print('NUMBER OF LINKS COVERED ARE',populateCount)
+         if(thread.is_alive()):
+           print('Despite timeout of 2 hours, thread %s is still alive'%thread.name)
+           
+             
 except threading.ThreadError as the:
     print('Thread error stack:',the)
     
 except Exception as e:
-    print('==>{0} for {1} thread has been raised'.format(e, thread.name.upper()))
+    print('==>{0} for {1} thread has been raised'.format(e, current.name.upper()))
     
 finally:
-    print('--->Time taken:%d seconds'%(time.time() - start_time))
+    if(current.isDaemon()):
+        print('Daemon reporting =====> Time taken:%d seconds'%(time.time() - start_time))
+        print('Daemon reporting =====> PopulateCount',populateCount)
+        
+print('--->Time taken:%d seconds'%(time.time() - start_time))

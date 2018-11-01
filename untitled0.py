@@ -1,26 +1,65 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 30 20:36:32 2018
+Created on Wed Oct 31 18:03:54 2018
 
 @author: kkonakan
 """
 
-import re
+import pandas as pd
+from wordcloud import WordCloud
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+import matplotlib.pyplot as plt
+from langdetect import detect_langs
+from langdetect import DetectorFactory
+import langid as lid
 
-ai = open('D:/AI/AI.txt','a')
-ml = open('D:/AI/ML.txt','a')
-io = open('D:/AI/IO.txt','a')
+DetectorFactory.seed = 0
+nonEng = []
+EngWords = []
+def langList(words):
+    dls= []
+    for word in words:
+        try:
+            lang = lid.classify(word)[0]
+            if lang != 'en':
+                nonEng.append(word)
+                continue
+            else:
+                EngWords.append(word)
+            dls.append(lid.classify(word))
+        except Exception as e:
+            print('*****************',word)
+            print(e)
+    return dls    
 
-def transform(fname):
-    file = open('D:/AI/%s.txt'%fname)
-    pattern = 'http[s]{0,1}://[w.]{0,4}.[\w\W\d]*?\.ai'
-    ext_pattern = 'http[s]{0,1}://[w.]{0,4}.([\w\W\d]*?)\.ai/.*'
-    for line in file.readlines():
-        if(re.match(pattern, line)):
-            print(line)
-        elif(re.match(ext_pattern, line)):
-            base = re.findall(ext_pattern,line)[0]
-            print('https://www.%s.ai'%base)
-        else:pass
+def genWordCloud(wordSet):
+    kwstr = ''
+    for word in wordSet:
+        kwstr = kwstr + ' '+ word
         
+    print('Number of key words:',len(wordSet))
+    print('Number of key words:',len(kwstr))
+    
+    wordcloud = WordCloud(width = 800, height = 800,\
+                          background_color ='white',  \
+                          stopwords = sw,  \
+                          min_font_size = 10).generate(kwstr)
+    plt.figure(figsize=(10,10))
+    plt.imshow(wordcloud)
+    plt.show()    
 
+df = pd.read_csv('D:/AI/Dataset/IO.csv')
+kwords = df['kwords']
+kwords = kwords.dropna()
+
+wordSet = set()
+sw = stopwords.words('english')
+print('Reading lines')
+for line in kwords:
+    tokens = word_tokenize(line)
+    [wordSet.add(word) for word in tokens]
+
+
+wordSet = wordSet.difference(sw)
+genWordCloud(wordSet)
