@@ -17,10 +17,10 @@ import threading
 
 class FetchDetails(threading.Thread):
     
-    def __init__(self, fileName, writer, linkCount, linkBase, csvOutputFile):
+    def __init__(self, DOMAIN, writer, linkCount, linkBase, csvOutputFile):
         super(FetchDetails, self).__init__()
-        self.inFile = 'D:/AI/%s.txt'%fileName  # Input links file
-        self.DOMAIN = fileName
+        self.inFile = 'D:/AI/%s.txt'%DOMAIN # Input links file
+        self.DOMAIN = DOMAIN
         self.writer = writer # CSV output writer
         self.crawledList = set()
         self.log = 0 # No log
@@ -80,6 +80,8 @@ class FetchDetails(threading.Thread):
             return 1
     
     def isUsingCSS(self,html):
+        # Decommissioned
+        return None
         if self.log == 1:
             print('isUsingCSS')
         H = str(html)
@@ -176,7 +178,7 @@ class FetchDetails(threading.Thread):
             siteDetails['hostedIn'] = self.getHostCountry(url)
             #siteDetails['RegIn'] = getCountryReg(url)
             siteDetails['AlexaRank'] = self.getAlexaRank(url)
-            siteDetails['CSS'] = self.isUsingCSS(html)
+            #siteDetails['CSS'] = self.isUsingCSS(html)
             siteDetails['JS'] = self.isUsingJS(contentSoup)
             siteDetails['size'] = self.saveHTML(url, html)
             for metaTags in contentSoup.find_all('meta'):
@@ -262,65 +264,80 @@ class FetchDetails(threading.Thread):
         completedThreadCount += 1
         self.pr('**********************Time for this thread to complete: %d seconds'%(time.time()-start_time))
     def getLineCount(fname):
-        with open(fname) as foo:
+        with open(fname,'r') as foo:
             return len(foo.readlines())
     
 
 
 # GLOBALS
 def getLineCount(fname):
-        with open(fname) as foo:
+        with open(fname,'r',encoding='utf-8-sig') as foo:
             return len(foo.readlines())
-            
+
+def getCrawledLinks(fname):
+    print('Incoming %s'%fname)
+    if os.path.isfile(fname):
+        import pandas as pd
+        print('%s is available'%fname)
+        df = pd.read_csv(fname, encoding='ISO-8859-1')
+        urls = df['url'].unique()
+        crawledLinks = set(urls)
+    else:
+        return set([])
+    print('Number OF already CRAWLED Links:',len(crawledLinks))
+    return crawledLinks
+
+
 
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
 thread_set = []
-DOMAIN_list = ['IO']
+DOMAIN_list = ['IO','ML']
+
 populateCount = {}
 completedThreadCount = 0
-crawledBase = set()
-
-'''
-if os.path.isfile('D:/AI/Dataset/IO.csv'):
-    df = pd.read_csv('D:/AI/Dataset/IO.csv', encoding='ISO-8859-1')
-    urls = df['url'].unique()
-    crawledBase = set(urls)
-print('LENGTH OF CRAWLED BASE:',len(crawledBase))
-del df
-'''
+crawledLinks = set()
+start_time = time.time()
+path = 'D:/AI/DataSet'
 
 try:
-    start_time = time.time()
-    path = 'D:/AI/DataSet/'
-    
+    numLinksPerThread = 25
+    sl_seconds = 30
     
     for DOMAIN in DOMAIN_list:
-        csvOutputFile='%s/%s.csv'%(path, DOMAIN)
-        fname = 'D:/AI/%s.txt'%DOMAIN
-        # Based on the linecount, start a new thread for every 100 links
-        #   Easier to start but harder to write to the csvOutputFile.csv        
+        
+        print('DOMAIN:%s'%DOMAIN)
+        
+        csvOutputFile='D:/AI/Dataset/%s.csv'%DOMAIN
+        linkFile = 'D:/AI/%s.txt'%DOMAIN
+        
         allLinks = []
+        crawledLinks = getCrawledLinks(csvOutputFile)
         
-        with open(fname) as inFile:
-            for link in inFile.readlines():
-                allLinks.append(link.strip())
-        
-        
-        csvfile=open(csvOutputFile, 'w', encoding='utf-8-sig', buffering=1)
+        if os.path.isfile(linkFile):
+            with open(linkFile,'r', encoding='utf-8-sig') as LFile:
+                print('Reading links')
+                for link in LFile.readlines():
+                    link = link.strip()
+                    if link in crawledLinks: 
+                        pass
+                    else:
+                        allLinks.append(link.strip())
+                        
+        print('To Crawl link count: %d'%len(allLinks))            
+        csvfile=open(csvOutputFile, 'a', encoding='utf-8-sig', buffering=1)
         writer = csv.DictWriter(csvfile, props, restval=NaN)
         
-        numLinksPerThread = 50
-        sl_seconds = 60
-        availableLinkCount = getLineCount(fname)
+        availableLinkCount = len(allLinks)
         
         if availableLinkCount%numLinksPerThread == 0:
             threadCount = availableLinkCount//numLinksPerThread
         else:
             threadCount = (availableLinkCount//numLinksPerThread) + 1
         
+        #print ('Available Links: %d After removing: %d'%(availableLinkCount, len(allLinks)))
         print('NUMBER OF THREADS WILL BE %d'%threadCount)
-        time.sleep(10)
+        
         # Use skipLinks in run method to spawn a thread for each 100 links. 
         # For each domain, number of threads will be ( linkCount%100 ) +1
         
@@ -334,21 +351,20 @@ try:
             
             threadName = '%s: %d'%(DOMAIN, threadNum)
             skipLinks = numLinksPerThread*threadNum    
-            linkBase = allLinks[skipLinks:skipLinks+numLinksPerThread]
-            #print('Time: %d'%(time.time() - st))
-            print('\nThread %d: Skipping first %d links'%(threadNum,skipLinks))
+            linkBase = set(allLinks[skipLinks:skipLinks+numLinksPerThread])
             threadNum += 1
-            current = FetchDetails(DOMAIN, writer, 100, linkBase, csvOutputFile)
+            current = FetchDetails(DOMAIN, writer, numLinksPerThread, linkBase, csvOutputFile)
+
             current.setName(threadName)
             populateCount[threadName] = 0
             thread_set.append(current)
             print('\nStarting a thread for %s'%(DOMAIN))
             current.start()        
-            skipLinks += 100
+            skipLinks += numLinksPerThread
             time.sleep(sl_seconds)  
         
         # Last thread if numLinks > 1
-        if availableLinkCount%100 != 0:
+        if availableLinkCount%numLinksPerThread != 0:
             threadNum -= 1
         if threadCount > threadNum:
             linkBase = allLinks[skipLinks:]
@@ -359,11 +375,12 @@ try:
             current.start()
     
     for thread in thread_set:
-         print('Waiting for thread %s to join'%thread.name)
+         name = thread.name
+         print('Waiting for thread %s to join'%name)
          thread.join(timeout=7200)
-         print('NUMBER OF LINKS COVERED ARE',populateCount)
+         print('NUMBER OF LINKS COVERED by thread %s ARE',name,populateCount[name])
          if(thread.is_alive()):
-           print('Despite timeout of 2 hours, thread %s is still alive'%thread.name)
+           print('Despite timeout of 2 hours, thread %s is still alive'%name)
            
              
 except threading.ThreadError as the:

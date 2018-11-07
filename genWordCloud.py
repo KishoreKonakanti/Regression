@@ -47,7 +47,8 @@ def genwordcloud(wordset):
     print('Number of key words:', len(wordset))
     print('Length of the string:', len(kwstr))
 
-    wordcloud = WordCloud(width=800, height=800, background_color='white', stopwords=sw, min_font_size=10).generate(kwstr)
+    wordcloud = WordCloud(width=800, height=800, background_color='white',\
+                          stopwords=sw, min_font_size=10).generate(kwstr)
     plt.figure(figsize=(10, 10))
     plt.imshow(wordcloud)
     plt.show()

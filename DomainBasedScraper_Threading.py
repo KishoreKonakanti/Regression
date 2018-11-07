@@ -32,6 +32,7 @@ class ThreadScraper(threading.Thread):
     def download(self, url):
         soup = None
         html = None
+        req = None
         if url.find('google') > 0: 
             req = ureq.Request(url, headers={'User-agent':'Firefox/2.0.0.11'})
         try:
@@ -270,7 +271,7 @@ linkSet_dict={}
 siteCount= {}
 domain_list=['io','ml','ai']
 search_engines = ['bing','yahoo','google']
-search_engines=['google']
+#search_engines=['google']
 
 logFile = open('D:/AI/log.txt','a', buffering=1)
 logFile.write('****************************************************')

@@ -1,63 +1,36 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 30 20:36:32 2018
+Created on Tue Nov  6 17:05:32 2018
 
 @author: kkonakan
 """
 
-import re
+# Atleast 2 letters can be surrounded by digits
 
-ai = open('D:/AI/AI.txt','r')
-ml = open('D:/AI/ML.txt','a')
-io = open('D:/AI/IO.txt','a')
-'''
-allLinks = []
-for link in ai.readlines():
-    allLinks.append(link.strip())
+
+
+def plot():
+    country_list = list(gh.Country)
+    total = list(gh.Total)
+    r = np.arange(53)
+    import matplotlib.pyplot as plt
+    fig,ax = plt.subplots()
+    plt.figure(figsize=(14,14))
+    plt.xscale('symlog')
+    plt.xlabel('Countries')
+    plt.ylabel('Number of websites hosted')
     
-lc = 10
-for skip in range(0,800,100):
-    print('Skipping %d'%skip)
-    print(allLinks[skip:skip+lc])
-'''
-def flatten(line):
-    retL = ''
-    for l in line:
-        retL += l
-    print(retL)
-    return retL
-
-def transform(fname):
-    return None
-    file = open('D:/AI/%s.txt'%fname)
-    pattern = 'http[s]{0,1}://[w.]{0,4}[\w\W\d]*?\.%s$'%fname.lower()
-    ext_pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]*)?\.%s\/.*$'%fname.lower()
-    base_url = ''
-    for line in file.readlines():
-        if(re.match(pattern, line)):
-            base_url = line
-        elif(re.match(ext_pattern, line)):
-            base = re.findall(ext_pattern,line)[0]
-            base_url = 'https://www.%s.%s'%(base,fname.lower())
-        else:pass
-        print(base_url)
-    return base_url
-
-def trlink(link):
-    return None
-    pattern = 'http[s]{0,1}://[w.]{0,4}[\w\W\d]*?\.%s$'%fname.lower()
-    ext_pattern = 'http[s]{0,1}://[w.]{0,4}([\w\W\d]*)?\.%s\/.*$'%fname.lower()
-    base_url = ''
-    line = link
-    if(re.match(pattern, line)):
-        print('Exact match')
-        base_url = line
-    elif(re.match(ext_pattern, line)):
-        base = re.findall(ext_pattern,line)[0]
-        base_url = 'https://www.%s.%s'%(base,'ml')
-    else:pass
-    print('Link:',base_url)
-    return base_url
-        
-print(trlink('http://www.microsofttranslator.com/bv.aspx?ref=SERP&br=ro&mkt=en-IN&dl=en&lp=FR_EN&a=http%3a%2f%2fragnarokforeverlove.ml%2f'))
-#print(transform('ml'))
+    sz = list(gh.Total)
+    sz = [x*30 for x in sz]
+    
+    for i,country in enumerate(country_list):
+        x_coord = total[i] + xa
+        y_coord = r[i] + ya
+        fsize = 10 * (total[i]/100)
+        if fsize < 10:
+            fsize = 10
+        print('Fontsizes:', fsize)
+        plt.text(x_coord,y_coord,country, fontsize=fsize)
+        #ax.annotate(country, [total[i], r[i]])
+    #plt.annotate(
+    plt.show()
