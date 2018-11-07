@@ -33,7 +33,7 @@ class FetchDetails(threading.Thread):
     
     def __init__(self, fileName, writer, numLinks):
         super(FetchDetails, self).__init__()
-        self.inFile = open('D:/AI/%s.txt'%fileName,'r') # Input links file
+        self.inFile = open('D:/AI/%s.txt'%fileName,'r', encoding='utf-8') # Input links file
         self.DOMAIN = fileName
         self.writer = writer # CSV output writer
         self.crawledList = set()
@@ -223,18 +223,22 @@ class FetchDetails(threading.Thread):
             base_url = 'https://www.%s.%s'%(self.baseName,self.DOMAIN.lower())
         else:pass
         if base_url is None:
-            print('INVALID Link:',link)
+            pass
+            #print('INVALID Link:',link)
         return base_url
     
     def run(self,skipLines = 0):
+        print(self.name,skipLines)
         linkFile = self.inFile
         cnt = 1
         global start_time
         while skipLines > 0:
             linkFile.readline()
             skipLines -= 1
+        
         for link in linkFile.readlines():
             link = link.strip()
+            print('Here')
             #now = time.time()
             print('Current Site# %d / %d: %s'%(cnt,self.numLinks,link ))
             #print('Time elapsed:%d seconds'%(now - start_time))
@@ -259,28 +263,34 @@ class FetchDetails(threading.Thread):
 
 # GLOBALS
 def getLineCount(fname):
-        with open(fname) as foo:
-            return len(foo.readlines())
+    print(fname)
+    with open(fname,'r', encoding='utf-8') as foo:
+        l = len(foo.readlines())
+        print(l)
+    return l
             
 
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
 thread_set = []
-DOMAIN_list = ['AI','IO','ML']
+DOMAIN_list = ['ML']
 try:
     start_time = time.time()
     path = 'D:/AI/DataSet/'
     for DOMAIN in DOMAIN_list:
-        
+        #print(DOMAIN)
         dataFile='%s/%s.csv'%(path, DOMAIN)
         fname = 'D:/AI/%s.txt'%DOMAIN
+        #print(fname)
         # Based on the linecount, start a new thread for every 100 links
         #   Easier to start but harder to write to the dataFile.csv
         
-        csvfile=open(dataFile, 'w', encoding='utf-8-sig')
+        csvfile=open(dataFile, 'w', encoding='utf-8')
+        #print(csvfile.tell())
         writer = csv.DictWriter(csvfile, props, restval=NaN)
         writer.writeheader()
         numLinks = getLineCount(fname)
+        #print('..',numLinks)
         current = FetchDetails(DOMAIN, writer, numLinks)
         current.name = DOMAIN
         thread_set.append(current)
@@ -295,6 +305,7 @@ try:
 except threading.ThreadError as the:
     print('Thread error stack:',the)
 except Exception as e:
-    print('==>{0} for {1} thread has been raised'.format(e, thread.name.upper()))
+    pass
+#    print('==>{0} for {1} thread has been raised'.format(e, thread.name.upper()))
 finally:
     print('--->Time taken:%d seconds'%(time.time() - start_time))

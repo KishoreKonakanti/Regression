@@ -12,44 +12,29 @@ from wordcloud import WordCloud
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from langdetect import DetectorFactory
-import langid as lid
+import re
+#import langid as lid
 
 DetectorFactory.seed = 0
 nonEng = []
 EngWords = []
 
-def langlist(words):
-    dls = []
-    for word in words:
-        try:
-            lang = lid.classify(word)[0]
-            if lang != 'en':
-                nonEng.append(word)
-                continue
-            else:
-                EngWords.append(word)
-            dls.append(lid.classify(word))
-        except Exception as e:
-            print('*****************', word)
-            print(e)
-    return dls
-
-
-def genwordcloud(wordset):
-    print('Incoming:',wordset)
+def genwordcloud(wordset,name):
+    print('Incoming:',name)
+    #print('Incoming:',wordset)
     if wordset is None:
         return None
     kwstr = ''
     for word in wordset:
         kwstr = kwstr + ' ' + word
 
-    print('Number of key words:', len(wordset))
-    print('Length of the string:', len(kwstr))
-
-    wordcloud = WordCloud(width=800, height=800, background_color='white', 
-                          stopwords=stopwords.words('english'), min_font_size=10).generate(kwstr)
-    plt.figure(figsize=(10, 10))
+    wordcloud = WordCloud(width=1000, height=1000, background_color='white', 
+                          stopwords=stopwords.words('english'),\
+                          min_font_size=10).generate(kwstr)
+    title= 'WordCloud for domain:'+name
+    plt.figure(figsize=(14, 14))
     plt.imshow(wordcloud)
+    plt.title(title.upper())
     plt.show()
 
 def arankAnalysis(df):
@@ -74,7 +59,6 @@ def arankAnalysis(df):
     global colors
     
     plt.hist(scaledar, color=colors.pop(),label='AI')
-    #plt.scatter(scaledar,list(range(len(scaledar))), c=colors.pop(),label='AI')
     plt.show()
     
     del plt
@@ -91,25 +75,27 @@ def hostedAnalysis(df):
         hin_dict.loc[loc] = [country,count]
         loc += 1
     del hin
-    print(hin_dict.shape)
+    #print(hin_dict.shape)
    # hin_dict.plot()
     
     return hin_dict
 
-def kwordAnalysis(df):
+def kwordAnalysis(df, name):
     kwords = df.kwords
     kwords.dropna(inplace=True)
     wordset = set()
     sw = stopwords.words('english')
-    import re
-    pattern='[\w\W\d]{0,}[a-zA-Z]{1,}[\w\W\d].*'
     for line in kwords:
-        for word in line:
-            if re.match(pattern, word): 
-                wordset.add(word)
-    
+        tokens = word_tokenize(line)
+        [wordset.add(word) for word in tokens]
+    if name == 'IO':
+       wordset = set()
+       for line in df.kwords:
+           line = re.subn(' ','', line)[0]
+           for word in line.split(','):
+               wordset.add(word)
     wordset.difference_update(sw)
-    genwordcloud(wordset)
+    genwordcloud(wordset,name)
     del wordset
     
 def hostedplot(gh):
@@ -146,20 +132,16 @@ hins = []
 
 for file in files:
     data = pd.read_csv('D:/AI/Dataset/%s.csv'%file)
-    print('DATA:%s'%file)
+    #print('DATA:%s'%file)
     #arankAnalysis(data)
-    hin_df = hostedAnalysis(data)
-    hins.append(hin_df)
+    #hin_df = hostedAnalysis(data)
+    #hins.append(hin_df)
     
-   # print('Number of countries',len(hin_df))
-    kwordAnalysis(data)
-#    print('Mean :%f and Standard Deviation:%f,Variance:%f'%(arankAnalysis(data)))
+    kwordAnalysis(data,file)
 
 gh = pd.DataFrame(hins[0])
 gh = gh.merge(hins[1],on='Country', how='outer')
 gh = gh.merge(hins[2],on='Country', how='outer')
 gh.fillna(value=0,inplace=True)
 gh['Total'] = gh.Count_x + gh.Count_y + gh.Count
-hostedplot(gh)
-# Hosted Analysis plot
-#import matplotlib.pyplot as plt
+#hostedplot(gh)
