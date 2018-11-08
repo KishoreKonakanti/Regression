@@ -13,7 +13,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from langdetect import DetectorFactory
 import re
-#import langid as lid
+import time
+from collections import Counter
 
 DetectorFactory.seed = 0
 nonEng = []
@@ -75,10 +76,59 @@ def hostedAnalysis(df):
         hin_dict.loc[loc] = [country,count]
         loc += 1
     del hin
-    #print(hin_dict.shape)
-   # hin_dict.plot()
     
     return hin_dict
+
+def manualAnalysis(wordset):
+    aicnt = 0
+    mlcnt = 0
+    dlcnt = 0
+    othcnt = 0
+    
+    aiwords = ['artificial','artificiallearning', \
+               'artificial intelligence','ai','automat',\
+               'intelligence','alexa']
+    dlwords = ['deep','deep learning','deeplearning','dl']
+    mlwords = ['machine','learning', 'machine learning' 'machinelearning','ml']
+    Lwords = ['course','education', 'code','coding','coded']
+    
+    for word in wordset:
+        if word in aiwords :
+            aicnt += 1
+        elif word in mlwords:
+            mlcnt += 1
+        elif word in dlwords:
+            dlcnt += 1
+        
+
+def getlangset(wordset):
+    import langid as lid
+    engwords = set()
+    for word in wordset:
+        if len(word) > 2:
+            lang, conf = lid.classify(word)
+            if conf > 0.8:
+                engwords.add(word)
+        else:
+            continue
+    return engwords
+    '''
+    estTime = len(wordset) * 0.3 #(0.1 for sleep and 0.2 for google api call)
+    print('Estimated time: %.2f seconds'%estTime)
+    from textblob import TextBlob
+    langset = set()
+    engwords = set()
+    otherwords = set()
+    for word in wordset:
+        lang = TextBlob(word).detect_language()
+        langset.add(lang) 
+        if (lang == 'en'):
+            engwords.add(word)
+        else:
+            otherwords.add(word)        
+        time.sleep(0.1)
+    return langset, engwords, otherwords
+    '''
 
 def kwordAnalysis(df, name):
     kwords = df.kwords
@@ -87,7 +137,7 @@ def kwordAnalysis(df, name):
     sw = stopwords.words('english')
     for line in kwords:
         tokens = word_tokenize(line)
-        [wordset.add(word) for word in tokens]
+        [wordset.add(word) if len(word)>2 else None for word in tokens]
     if name == 'IO':
        wordset = set()
        for line in df.kwords:
@@ -95,7 +145,14 @@ def kwordAnalysis(df, name):
            for word in line.split(','):
                wordset.add(word)
     wordset.difference_update(sw)
-    genwordcloud(wordset,name)
+    Ewords = getlangset(wordset)
+    
+    print('Top 10 words with their counts used:',Counter(wordset).most_common(10))
+    print('Top 10 english words used:',Counter(Ewords).most_common(10))
+   
+    #genwordcloud(wordset,name)
+    
+    return wordset
     del wordset
     
 def hostedplot(gh):
@@ -104,7 +161,7 @@ def hostedplot(gh):
     y_coords = np.arange(len(gh))
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(14,14))
+    plt.figure(figsize=(15,15))
     plt.xscale('symlog')
     plt.ylabel('Countries')
     plt.xlabel('Number of websites hosted')
@@ -113,14 +170,20 @@ def hostedplot(gh):
     plt.grid(True)
     plt.scatter(gh.Total,y_coords, label='Total', s=sz)
     for i,country in enumerate(country_list):
+        
         x_coord = total[i]
         y_coord = y_coords[i]
+        if country == 'United States':
+            country = 'USA'
+        elif country == 'United Kingdom':
+            country = 'UK'
+        text = '%s (%d)'%(country, x_coord)
         fsize = 10 * (total[i]/100)
         if fsize < 10:
             fsize = 10
         #print('Fontsizes:', fsize)
-        plt.text(x_coord,y_coord,country, fontsize=fsize)
-        
+        plt.text(x_coord,y_coord, text, fontsize=fsize)
+    plt.title('Number of Hosted Websites per Country')
     plt.show()
     del plt
     
@@ -128,20 +191,25 @@ def hostedplot(gh):
 #aranks = []
 colors = ['r','b','g','k','m']
 files = ['AI','IO','ML']
+files = ['AI']
 hins = []
 
 for file in files:
     data = pd.read_csv('D:/AI/Dataset/%s.csv'%file)
     #print('DATA:%s'%file)
-    #arankAnalysis(data)
-    #hin_df = hostedAnalysis(data)
-    #hins.append(hin_df)
-    
-    kwordAnalysis(data,file)
-
+    arankAnalysis(data)
+    hin_df = hostedAnalysis(data)
+    hins.append(hin_df)
+    wset = kwordAnalysis(data,file)
+'''
 gh = pd.DataFrame(hins[0])
 gh = gh.merge(hins[1],on='Country', how='outer')
 gh = gh.merge(hins[2],on='Country', how='outer')
+
+# Remove hostedIn row
+gh = gh[ (gh.Country != 'hostedIn') ]
+
 gh.fillna(value=0,inplace=True)
 gh['Total'] = gh.Count_x + gh.Count_y + gh.Count
-#hostedplot(gh)
+hostedplot(gh)
+'''

@@ -71,6 +71,7 @@ class FetchDetails(threading.Thread):
         return country
     
     def isUsingJS(self,soup):
+        
         if self.log == 1:
             print('isUsingJS')
         t = soup.find_all('script')
@@ -251,7 +252,7 @@ class FetchDetails(threading.Thread):
             cnt += 1
 
             siteDets = self.populateSiteDetails(link)
-            self.pr('Length of sitedetails: %d'%len(siteDets))
+            self.pr('Length of sitedetail values: %d'%len(siteDets.values()))
             
             self.lock.acquire()
             # WRITE SITEDETAILS AND INCREMENT THE NUMBER OF POPULATED SITES BY 1
@@ -292,7 +293,7 @@ def getCrawledLinks(fname):
 props = ['url','title','descr','numLinks','kwords','AlexaRank','hostedIn','CSS',
          'JS','size']
 thread_set = []
-DOMAIN_list = ['IO','ML']
+DOMAIN_list = ['ML']
 
 populateCount = {}
 completedThreadCount = 0

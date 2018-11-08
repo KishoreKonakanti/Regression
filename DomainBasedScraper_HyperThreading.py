@@ -40,7 +40,6 @@ class FetchDetails(threading.Thread):
         self.log = 0 # No log
         self.lock = threading.Lock()
         self.baseName = None
-        dataFile='%s/%s.csv'%(path, DOMAIN)
         self.numLinks = numLinks
         
         
@@ -102,6 +101,7 @@ class FetchDetails(threading.Thread):
             return 0
     
     def saveHTML(self,url, content):
+        return None
         '''
             Saves the file to the disk and returns size of the html file in KB
         '''
@@ -285,7 +285,7 @@ try:
         # Based on the linecount, start a new thread for every 100 links
         #   Easier to start but harder to write to the dataFile.csv
         
-        csvfile=open(dataFile, 'w', encoding='utf-8')
+        csvfile=open(dataFile, 'a', encoding='utf-8')
         #print(csvfile.tell())
         writer = csv.DictWriter(csvfile, props, restval=NaN)
         writer.writeheader()

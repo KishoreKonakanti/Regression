@@ -34,3 +34,4 @@ def plot():
         #ax.annotate(country, [total[i], r[i]])
     #plt.annotate(
     plt.show()
+    
